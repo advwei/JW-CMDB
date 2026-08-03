@@ -6,7 +6,7 @@
 </h3>
 
 <p align="center">
-  <a href="https://github.com/advwei/cmdb_ts/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-brightgreen" alt="License: GPLv3"></a>
+  <a href="https://github.com/advwei/JW-CMDB/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-brightgreen" alt="License: GPLv3"></a>
   <a href="https://github.com/sendya/ant-design-pro-vue"><img src="https://img.shields.io/badge/UI-Ant%20Design%20Pro%20Vue-green" alt="UI"></a>
   <a href="https://github.com/pallets/flask"><img src="https://img.shields.io/badge/API-Flask-bright" alt="API"></a>
 </p>
@@ -133,7 +133,7 @@ cmdb_ts
   #### One-Click Installation
   ```bash
   # Enter the Agent folder of the project and execute the one-click installation
-  cd /cmdb_ts/cmdb-agent
+  cd /JW-CMDB/cmdb-agent
   sudo bash install.sh
   ```
   #### Other Notes
@@ -150,7 +150,7 @@ cmdb_ts
   #### Deployment service
 ```bash
   # Navigate to the cmdb-ansible-executor directory and install dependencies.
-  cd /opt/cmdb-ansible-executor
+  cd /opt/JW-CMDB/cmdb-ansible-executor
   pip install -r requirements.txt
 
   # edit EXECUTOR_API_KEY
@@ -169,7 +169,7 @@ cmdb_ts
   
 ### 5. Access
 
-- Enter the project directory `cd /opt/cmdb_ts`
+- Enter the project directory `cd /opt/JW-CMDB`
 - Start the image, `docker compose up -d`
 - Open a browser and access: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - Username: admin

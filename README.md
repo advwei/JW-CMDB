@@ -9,7 +9,7 @@
 </h3>
 
 <p align="center">
-  <a href="https://github.com/advwei/cmdb_ts/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-brightgreen" alt="License: GPLv3"></a>
+  <a href="https://github.com/advwei/JW-CMDB/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-brightgreen" alt="License: GPLv3"></a>
   <a href="https:https://github.com/sendya/ant-design-pro-vue"><img src="https://img.shields.io/badge/UI-Ant%20Design%20Pro%20Vue-green" alt="UI"></a>
   <a href="https://github.com/pallets/flask"><img src="https://img.shields.io/badge/API-Flask-bright" alt="API"></a>
 </p>
@@ -110,7 +110,7 @@ cmdb_ts
 
 ### 1. 安装依赖拉取代码
 - 第1步: 安装 Docker 环境和 Docker Compose（v2）
-- 第2步: 在/opt目录拷贝项目代码, `git clone https://github.com/advwei/cmdb_ts.git`
+- 第2步: 在/opt目录下拷贝项目代码,  `git clone https://github.com/advwei/cmdb_ts.git`
 
 ### 2. 构建前后端镜像
 + Docker 快速构建
@@ -131,7 +131,7 @@ cmdb_ts
   #### 一键安装
   ```bash
   # 进入项目Agent文件夹，执行一键安装
-  cd /cmdb_ts/cmdb-agent
+  cd /JW-CMDB/cmdb-agent
   sudo bash install.sh
   ```
   #### 其他说明
@@ -147,7 +147,7 @@ cmdb_ts
   #### 部署服务
 ```bash
   # 进入 cmdb-ansible-executor 目录安装依赖
-  cd /opt/cmdb-ansible-executor
+  cd /opt/JW-CMDB/cmdb-ansible-executor
   pip install -r requirements.txt
 
   # 编辑 cmdb-ansible.service 中的 EXECUTOR_API_KEY
@@ -165,7 +165,7 @@ cmdb_ts
   - 其他介绍请参考 [Ansible介绍文档](cmdb-ansible-executor/AnsibleReadMe.md)
 
 ### 5. 访问
-- 进入项目目录`cd /opt/cmdb_ts`
+- 进入项目目录`cd /opt/JW-CMDB`
 - 启动镜像, `docker compose up -d`
 - 打开浏览器并访问: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - 用户名: admin
