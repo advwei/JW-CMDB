@@ -1,0 +1,19 @@
+[Unit]
+Description=CMDB Ansible Executor Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/JW-CMDB/cmdb-ansible-executor
+Environment="EXECUTOR_HOST=0.0.0.0"
+Environment="EXECUTOR_PORT=18081"
+Environment="EXECUTOR_API_KEY=change-me-to-a-secure-key"
+Environment="ANSIBLE_BASE_DIR=/opt/ansible"
+Environment="ANSIBLE_TIMEOUT=600"
+ExecStart=/usr/bin/python3 /opt/JW-CMDB/cmdb-ansible-executor/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

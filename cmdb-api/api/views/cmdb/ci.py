@@ -1,0 +1,401 @@
+# -*- coding:utf-8 -*- 
+
+import time
+
+import six
+from flask import abort
+from flask import current_app
+from flask import request
+
+from api.lib.cmdb.cache import CITypeCache
+from api.lib.cmdb.ci import CIManager
+from api.lib.cmdb.ci import CIRelationManager
+from api.lib.cmdb.const import ExistPolicy
+from api.lib.cmdb.const import ResourceTypeEnum, PermEnum
+from api.lib.cmdb.const import RetKey
+from api.lib.cmdb.perms import has_perm_for_ci
+from api.lib.cmdb.search import SearchError
+from api.lib.cmdb.search.ci import search as ci_search
+from api.lib.decorator import args_required
+from api.lib.perm.acl.acl import has_perm_from_args
+from api.lib.utils import get_page
+from api.lib.utils import get_page_size
+from api.lib.utils import handle_arg_list
+from api.models.cmdb import CI
+from api.resource import APIView
+
+
+class CIsByTypeView(APIView):
+    url_prefix = "/ci/type/<int:type_id>"
+
+    def get(self, type_id):
+        fields = handle_arg_list(request.values.get("fields", ""))
+
+        ret_key = request.values.get("ret_key", RetKey.NAME)
+        if ret_key not in (RetKey.NAME, RetKey.ALIAS, RetKey.ID):
+            ret_key = RetKey.NAME
+
+        page = get_page(request.values.get("page", 1))
+        count = get_page_size(request.values.get("count"))
+
+        manager = CIManager()
+        res = manager.get_cis_by_type(type_id,
+                                      ret_key=ret_key,
+                                      fields=fields,
+                                      page=page,
+                                      per_page=count)
+
+        return self.jsonify(type_id=type_id,
+                            numfound=res[0],
+                            total=len(res[2]),
+                            page=res[1],
+                            cis=res[2])
+
+
+class CIView(APIView):
+    url_prefix = ("/ci/<int:ci_id>", "/ci")
+
+    def get(self, ci_id):
+        fields = handle_arg_list(request.values.get("fields", ""))
+
+        ret_key = request.values.get("ret_key", RetKey.NAME)
+        if ret_key not in (RetKey.NAME, RetKey.ALIAS, RetKey.ID):
+            ret_key = RetKey.NAME
+
+        manager = CIManager()
+        ci = manager.get_ci_by_id_from_db(ci_id, ret_key=ret_key, fields=fields, valid=True)
+
+        return self.jsonify(ci_id=ci_id, ci=ci)
+
+    @staticmethod
+    def _wrap_ci_dict():
+        ci_dict = {k: v.strip() if isinstance(v, six.string_types) else v for k, v in request.values.items()
+                   if k != "ci_type" and not k.startswith("_")}
+
+        return ci_dict
+
+    @has_perm_for_ci("ci_type", ResourceTypeEnum.CI, PermEnum.ADD, lambda x: CITypeCache.get(x))
+    def post(self):
+        ci_type = request.values.get("ci_type")
+        ticket_id = request.values.pop("ticket_id", None)
+        _no_attribute_policy = request.values.get("no_attribute_policy", ExistPolicy.IGNORE)
+
+        exist_policy = request.values.pop('exist_policy', None)
+
+        ci_dict = self._wrap_ci_dict()
+
+        manager = CIManager()
+        ci_id = manager.add(ci_type,
+                            exist_policy=exist_policy or ExistPolicy.REJECT,
+                            _no_attribute_policy=_no_attribute_policy,
+                            _is_admin=request.values.pop('__is_admin', None) or False,
+                            ticket_id=ticket_id,
+                            **ci_dict)
+
+        return self.jsonify(ci_id=ci_id)
+
+    @has_perm_for_ci("ci_id", ResourceTypeEnum.CI, PermEnum.UPDATE, CIManager.get_type)
+    def put(self, ci_id=None):
+        args = request.values
+        ci_type = args.get("ci_type")
+        ticket_id = request.values.pop("ticket_id", None)
+        _no_attribute_policy = args.get("no_attribute_policy", ExistPolicy.IGNORE)
+
+        ci_dict = self._wrap_ci_dict()
+        manager = CIManager()
+        if ci_id is not None:
+            manager.update(ci_id,
+                           _is_admin=request.values.pop('__is_admin', None) or False,
+                           ticket_id=ticket_id,
+                           **ci_dict)
+        else:
+            request.values.pop('exist_policy', None)
+            ci_id = manager.add(ci_type,
+                                exist_policy=ExistPolicy.REPLACE,
+                                _no_attribute_policy=_no_attribute_policy,
+                                _is_admin=request.values.pop('__is_admin', None) or False,
+                                ticket_id=ticket_id,
+                                **ci_dict)
+
+        return self.jsonify(ci_id=ci_id)
+
+    @has_perm_for_ci("ci_id", ResourceTypeEnum.CI, PermEnum.DELETE, CIManager.get_type)
+    def delete(self, ci_id):
+        manager = CIManager()
+        manager.delete(ci_id)
+
+        return self.jsonify(message="ok")
+
+
+class CIDetailView(APIView):
+    url_prefix = "/ci/<int:ci_id>/detail"
+
+    def get(self, ci_id):
+        _ci = CI.get_by_id(ci_id).to_dict()
+
+        return self.jsonify(**_ci)
+
+
+class CISearchView(APIView):
+    url_prefix = ("/ci/s", "/ci/search")
+
+    def get(self):
+        """@params: q: query statement
+                    fl: filter by column
+                    count/page_size: the number of ci
+                    ret_key: id, name, alias
+                    facet: statistic
+        """
+        page = get_page(request.values.get("page", 1))
+        count = get_page_size(request.values.get("count") or request.values.get("page_size"))
+
+        query = request.values.get('q', "")
+        fl = handle_arg_list(request.values.get('fl', ""))
+        excludes = handle_arg_list(request.values.get('excludes', ""))
+        ret_key = request.values.get('ret_key', RetKey.NAME)
+        if ret_key not in (RetKey.NAME, RetKey.ALIAS, RetKey.ID):
+            ret_key = RetKey.NAME
+        facet = handle_arg_list(request.values.get("facet", ""))
+        sort = request.values.get("sort")
+        use_id_filter = request.values.get("use_id_filter", False) in current_app.config.get('BOOL_TRUE')
+
+        start = time.time()
+        s = ci_search(query, fl, facet, page, ret_key, count, sort, excludes, use_id_filter=use_id_filter)
+        try:
+            response, counter, total, page, numfound, facet = s.search()
+        except SearchError as e:
+            return abort(400, str(e))
+
+        if request.values.get('need_children') in current_app.config.get('BOOL_TRUE') and len(response) == 1:
+            children = CIRelationManager.get_children(response[0]['_id'], ret_key=ret_key)  # one floor
+            response[0].update(children)
+
+        current_app.logger.debug("search time is: {0}".format(time.time() - start))
+
+        return self.jsonify(numfound=numfound,
+                            total=total,
+                            page=page,
+                            facet=facet,
+                            counter=counter,
+                            result=response)
+
+    def post(self):
+        return self.get()
+
+
+class CIUnique(APIView):
+    url_prefix = "/ci/<int:ci_id>/unique"
+
+    @has_perm_from_args("ci_id", ResourceTypeEnum.CI, PermEnum.UPDATE, CIManager.get_type_name)
+    def put(self, ci_id):
+        params = request.values
+        unique_name = list(params.keys())[0]
+        unique_value = list(params.values())[0]
+
+        CIManager.update_unique_value(ci_id, unique_name, unique_value)
+
+        return self.jsonify(ci_id=ci_id)
+
+
+class CIHeartbeatView(APIView):
+    url_prefix = ("/ci/heartbeat", "/ci/heartbeat/<string:ci_type>/<string:unique>")
+
+    def get(self):
+        page = get_page(request.values.get("page", 1))
+        ci_type = request.values.get("ci_type", "").strip()
+        try:
+            type_id = CITypeCache.get(ci_type).type_id
+        except AttributeError:
+            return self.jsonify(numfound=0, result=[])
+        agent_status = request.values.get("agent_status")
+        if agent_status:
+            agent_status = int(agent_status)
+
+        numfound, result = CIManager.get_heartbeat(page, type_id, agent_status=agent_status)
+
+        return self.jsonify(numfound=numfound, result=result)
+
+    def post(self, ci_type, unique):
+        if not unique or not ci_type:
+            return self.jsonify(message="error")
+
+        msg, cmd = CIManager().add_heartbeat(ci_type, unique)
+
+        return self.jsonify(message=msg, cmd=cmd)
+
+
+class CIFlushView(APIView):
+    url_prefix = ("/ci/flush", "/ci/<int:ci_id>/flush")
+
+    def get(self, ci_id=None):
+        from api.tasks.cmdb import ci_cache
+        from api.lib.cmdb.const import CMDB_QUEUE
+        if ci_id is not None:
+            ci_cache.apply_async(args=(ci_id, None, None), queue=CMDB_QUEUE)
+        else:
+            cis = CI.get_by(to_dict=False)
+            for ci in cis:
+                ci_cache.apply_async(args=(ci.id, None, None), queue=CMDB_QUEUE)
+
+        return self.jsonify(code=200)
+
+
+class CIAutoDiscoveryStatisticsView(APIView):
+    url_prefix = "/ci/adc/statistics"
+
+    def get(self):
+        return self.jsonify(CIManager.get_ad_statistics())
+
+
+class CIPasswordView(APIView):
+    url_prefix = "/ci/<int:ci_id>/attributes/<int:attr_id>/password"
+
+    def get(self, ci_id, attr_id):
+        return self.jsonify(ci_id=ci_id, attr_id=attr_id, value=CIManager.load_password(ci_id, attr_id))
+
+    def post(self, ci_id, attr_id):
+        return self.get(ci_id, attr_id)
+
+
+class CIBaselineView(APIView):
+    url_prefix = ("/ci/baseline", "/ci/<int:ci_id>/baseline/rollback")
+
+    @args_required("before_date")
+    def get(self):
+        ci_ids = handle_arg_list(request.values.get('ci_ids'))
+        before_date = request.values.get('before_date')
+
+        return self.jsonify(CIManager().baseline(list(map(int, ci_ids)), before_date))
+
+    @args_required("before_date")
+    @has_perm_for_ci("ci_id", ResourceTypeEnum.CI, PermEnum.UPDATE, CIManager.get_type)
+    def post(self, ci_id):
+        if 'rollback' in request.url:
+            before_date = request.values.get('before_date')
+
+            return self.jsonify(**CIManager().rollback(ci_id, before_date))
+
+        return self.get(ci_id)
+
+
+class CIMobileDetailView(APIView):
+    url_prefix = "/ci/<int:ci_id>/mobile"
+
+    def get(self, ci_id):
+        ci = CIManager.get_ci_by_id_from_db(ci_id, ret_key=RetKey.NAME, fields=None, valid=True)
+
+        ci_type = CITypeCache.get(ci.get("_type", 0)) if ci.get("_type") else None
+        type_info = {"id": ci_type.id, "name": ci_type.name, "alias": ci_type.alias} if ci_type else {}
+
+        attribute_alias_map = {}
+        if ci_type:
+            from api.lib.cmdb.ci_type import CITypeAttributeManager
+            attrs = CITypeAttributeManager.get_attr_names_by_type_id(ci_type.id)
+            if attrs:
+                from api.lib.cmdb.cache import AttributeCache
+                for attr_name in attrs:
+                    attr_obj = AttributeCache.get(attr_name)
+                    if attr_obj:
+                        attribute_alias_map[attr_obj.name] = attr_obj.alias or attr_obj.name
+
+        relations = {"parents": [], "children": []}
+        try:
+            children = CIRelationManager.get_children(ci_id, ret_key=RetKey.NAME)
+            for type_name, cis in children.items():
+                child_type = CITypeCache.get(type_name) if type_name else None
+                child_type_name = child_type.alias if child_type else (type_name or "")
+                for c in cis:
+                    c["_type_name"] = child_type_name
+                    relations["children"].append(c)
+        except Exception as e:
+            current_app.logger.exception("failed to load child relations for ci_id=%s: %s", ci_id, e)
+
+        try:
+            parent_ids = CIRelationManager.get_parent_ids([ci_id]) or {}
+            for p_id, p_type_id in parent_ids.get(ci_id, []):
+                try:
+                    parent_ci = CIManager.get_cis_by_ids([str(p_id)], ret_key=RetKey.NAME) or []
+                except Exception as e:
+                    current_app.logger.exception(
+                        "failed to load parent ci for ci_id=%s parent_id=%s: %s", ci_id, p_id, e
+                    )
+                    continue
+
+                p_type = CITypeCache.get(p_type_id) if p_type_id else None
+                parent_type_name = p_type.alias if p_type else ""
+                for p in parent_ci:
+                    p["_type_name"] = parent_type_name
+                    relations["parents"].append(p)
+        except Exception as e:
+            current_app.logger.exception("failed to load parent relations for ci_id=%s: %s", ci_id, e)
+
+        from api.lib.cmdb.history import AttributeHistoryManger
+        try:
+            history = AttributeHistoryManger.get_by_ci_id(ci_id)
+            history = history[:10]
+        except Exception:
+            history = []
+
+        return self.jsonify(ci=ci, type=type_info, relations=relations, history=history,
+                            attribute_alias_map=attribute_alias_map)
+
+
+class CIRecycleView(APIView):
+    url_prefix = "/ci/recycle"
+
+    @staticmethod
+    def _wrap_ci_dict():
+        ci_dict = {k: v.strip() if isinstance(v, six.string_types) else v for k, v in request.values.items()
+                   if k != "ci_type" and not k.startswith("_")}
+        return ci_dict
+
+    def post(self):
+        ci_ids = request.values.get("ci_ids", "")
+        delstatus = request.values.get("delstatus", "待回收")
+
+        if not ci_ids:
+            return self.jsonify(message="ci_ids is required"), 400
+
+        try:
+            ci_id_list = [int(x.strip()) for x in str(ci_ids).split(",") if x.strip()]
+        except (ValueError, TypeError):
+            return self.jsonify(message="invalid ci_ids format"), 400
+
+        if not ci_id_list:
+            return self.jsonify(message="ci_ids cannot be empty"), 400
+
+        manager = CIManager()
+        results = manager.recycle(ci_id_list, delstatus=delstatus)
+
+        return self.jsonify(
+            success=results['success'],
+            failed=results['failed'],
+            errors=results['errors']
+        )
+
+
+class CICancelRecycleView(APIView):
+    url_prefix = "/ci/cancel_recycle"
+
+    def post(self):
+        ci_ids = request.values.get("ci_ids", "")
+
+        if not ci_ids:
+            return self.jsonify(message="ci_ids is required"), 400
+
+        try:
+            ci_id_list = [int(x.strip()) for x in str(ci_ids).split(",") if x.strip()]
+        except (ValueError, TypeError):
+            return self.jsonify(message="invalid ci_ids format"), 400
+
+        if not ci_id_list:
+            return self.jsonify(message="ci_ids cannot be empty"), 400
+
+        manager = CIManager()
+        results = manager.cancel_recycle(ci_id_list)
+
+        return self.jsonify(
+            success=results['success'],
+            failed=results['failed'],
+            errors=results['errors']
+        )

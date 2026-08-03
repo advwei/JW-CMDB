@@ -1,0 +1,29 @@
+[Unit]
+Description=CMDB IPAM Host Scan Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/cmdb-agent/cmdb_agent.py
+ExecStartPre=/bin/sleep 5
+Restart=always
+RestartSec=30
+User=root
+Group=root
+WorkingDirectory=/opt/cmdb-agent
+Environment=PYTHONUNBUFFERED=1
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/opt/cmdb-agent
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=1024
+
+[Install]
+WantedBy=multi-user.target

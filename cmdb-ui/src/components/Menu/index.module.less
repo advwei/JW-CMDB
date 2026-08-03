@@ -1,0 +1,33 @@
+.cmdb-side-menu-search {
+  background-color: #FFFFFF !important;
+  cursor: auto !important;
+
+  :global {
+    .ant-input-affix-wrapper {
+      max-width: 170px !important;
+      width: 170px;
+      border-radius: 30px;
+    }
+
+    .ant-input {
+      box-shadow: none;
+      height: 30px;
+      line-height: 30px;
+      border-radius: 30px;
+
+      &:focus {
+        border: solid 1px #B1C9FF;
+      }
+    }
+
+    .cmdb-side-menu-search-focused {
+      .ant-input {
+        border: solid 1px #B1C9FF;
+      }
+    }
+
+    .ant-input-suffix {
+      right: 0px !important;
+    }
+  }
+}

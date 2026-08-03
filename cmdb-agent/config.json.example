@@ -1,0 +1,20 @@
+{
+    "cmdb_url": "http://192.168.1.100:8000",
+    "api_key": "your_api_key_here",
+    "api_secret": "your_api_secret_here",
+    "agent_id": "0xabcd1234",
+    "interval": 7200,
+    "log_level": "INFO",
+    "skip_interfaces": ["lo", "docker*", "veth*", "br-*", "tun*", "virbr*"],
+    "scan_method": "auto",
+    "scan_concurrency": 50,
+    "ping_timeout": 2,
+    "subnet_scan_interval": 7200,
+    "asset_types": ["vmserver"],
+    "ip_fields": ["private_ip", "public_ip", "ip"],
+    "name_fields": ["assetname", "hostname", "name"],
+    "subnet_field": "subnet",
+    "auth_token": "",
+    "http_port": 8900,
+    "http_host": "0.0.0.0"
+}
