@@ -31,8 +31,7 @@ This project uses two AI agent tools, Codex and Opencode, and is a secondary dev
 ### 1. New Directory Structure
 
 ```shell
-cmdb_ts
-
+JW-CMDB
 │
 ├── ci_models # Asset Models
 ├── cmdb-agent # Agent Server Related Code
@@ -111,7 +110,7 @@ cmdb_ts
 
 - Step 1: Install Docker Environment and Docker Compose (v2)
 
-- Step 2: Copy the project code to the /opt directory, `git clone https://github.com/advwei/cmdb_ts.git`
+- Step 2: Copy the project code to the /opt directory, `git clone https://github.com/advwei/JW-CMDB.git`
 
 ### 2. Build Frontend and Backend Images
 
@@ -137,7 +136,7 @@ cmdb_ts
   sudo bash install.sh
   ```
   #### Other Notes
-  - For other installation methods and content introductions, please refer to the [Agent Introduction Document](cmdb-agent/AgentReadMe.md)
+  - For other installation methods and content introductions, please refer to the [Agent Introduction Document](/cmdb-agent/AgentReadMe_en.md)
 
 ### 4. Ansible Intermediate Service Deployment
 
@@ -165,7 +164,7 @@ cmdb_ts
 ```
   #### Other Notes
 
-  - For further information, please refer to the [Ansible Introduction Documentation](cmdb-ansible-executor/AnsibleReadMe.md)
+  - For further information, please refer to the [Ansible Introduction Documentation](/cmdb-ansible-executor/AnsibleReadMe_en.md)
   
 ### 5. Access
 

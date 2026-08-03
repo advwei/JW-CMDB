@@ -32,7 +32,7 @@
 
 ### 1. 新增目录结构
 ```shell
-cmdb_ts
+JW-CMDB
 │
 ├── ci_models               # 资产模型
 ├── cmdb-agent              # Agent服务器相关代码
@@ -110,7 +110,7 @@ cmdb_ts
 
 ### 1. 安装依赖拉取代码
 - 第1步: 安装 Docker 环境和 Docker Compose（v2）
-- 第2步: 在/opt目录下拷贝项目代码,  `git clone https://github.com/advwei/cmdb_ts.git`
+- 第2步: 在/opt目录下拷贝项目代码,  `git clone https://github.com/advwei/JW-CMDB.git`
 
 ### 2. 构建前后端镜像
 + Docker 快速构建
@@ -162,7 +162,7 @@ cmdb_ts
 ```
 
   #### 其他说明
-  - 其他介绍请参考 [Ansible介绍文档](cmdb-ansible-executor/AnsibleReadMe.md)
+  - 其他介绍请参考 [Ansible介绍文档](cmdb-ansible-executor/AnsibleReadME.md)
 
 ### 5. 访问
 - 进入项目目录`cd /opt/JW-CMDB`
