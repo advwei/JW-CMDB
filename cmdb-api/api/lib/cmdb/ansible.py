@@ -102,6 +102,12 @@ class AnsibleSync(object):
         return result
 
     @staticmethod
+    def _is_initial_setup(playbook):
+        if not playbook:
+            return False
+        return playbook.replace('\\', '/').split('/')[-1] == 'setup_server.yml'
+
+    @staticmethod
     def _first_value(ci_dict, candidates):
         if isinstance(candidates, str):
             candidates = [candidates]
@@ -193,11 +199,20 @@ class AnsibleSync(object):
             'ansible_port': creds['ansible_port'],
             'ansible_user': creds['ansible_user'],
             'ansible_password': ci_password or creds['ansible_password'],
+            'initial_password': creds['ansible_password'],
         }
 
     def setup_server(self, ci_id, playbook=None, new_password=None, extra_params=None):
         entry = self._build_host_entry(ci_id)
         playbook = playbook or self.default_playbook
+
+        use_initial = self._is_initial_setup(playbook) and bool(new_password)
+        ansible_password = entry['initial_password'] if use_initial else entry['ansible_password']
+        current_app.logger.info(
+            'Ansible setup_server: ci_id={} playbook={} new_password_provided={} use_initial={} '
+            'password_source={}'.format(
+                ci_id, playbook, bool(new_password), use_initial,
+                'initial' if use_initial else 'ci_or_default'))
 
         hosts = [{
             'ip': entry['ip'],
@@ -205,7 +220,7 @@ class AnsibleSync(object):
             'os_version': entry['os_version'],
             'ansible_port': entry['ansible_port'],
             'ansible_user': entry['ansible_user'],
-            'ansible_password': entry['ansible_password'],
+            'ansible_password': ansible_password,
         }]
 
         result = self.client.run_playbook(
@@ -232,6 +247,10 @@ class AnsibleSync(object):
 
     def setup_servers_batch(self, ci_ids, playbook=None, new_password=None, extra_params=None):
         playbook = playbook or self.default_playbook
+        use_initial = self._is_initial_setup(playbook) and bool(new_password)
+        current_app.logger.info(
+            'Ansible setup_servers_batch: ci_ids={} playbook={} new_password_provided={} use_initial={}'.format(
+                ci_ids, playbook, bool(new_password), use_initial))
         hosts = []
         host_entries = {}
         errors = []
@@ -245,7 +264,7 @@ class AnsibleSync(object):
                     'os_version': entry['os_version'],
                     'ansible_port': entry['ansible_port'],
                     'ansible_user': entry['ansible_user'],
-                    'ansible_password': entry['ansible_password'],
+                    'ansible_password': entry['initial_password'] if use_initial else entry['ansible_password'],
                 })
                 host_entries[entry['ip']] = entry
             except Exception as e:

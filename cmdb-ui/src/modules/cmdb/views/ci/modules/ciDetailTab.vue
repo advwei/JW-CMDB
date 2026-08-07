@@ -272,6 +272,7 @@ export default {
       rowSpanMap: {},
       ciHistory: [],
       ciId: null,
+      ansibleNewPassword: '',
       ci_types: [],
       hasPermission: true,
       tableHeight: this.attributeHistoryTableHeight || (this.$store.state.windowHeight - 130),
@@ -618,7 +619,10 @@ export default {
               )),
             ]),
             h('a-form-item', { props: { label: '新密码（可选）' } }, [
-              h('a-input-password', { props: { placeholder: '留空则不修改密码' } }),
+              h('a-input-password', {
+                attrs: { name: 'new_password', placeholder: '留空则不修改密码' },
+                on: { change: (e) => { that.ansibleNewPassword = e.target.value } },
+              }),
             ]),
             h('a-form-item', { props: { label: '额外参数（可选）' } }, [
               h('a-input', {
@@ -632,11 +636,12 @@ export default {
         onOk() {
           const modalEl = document.querySelector('.ant-modal-confirm-body')
           const selectEl = modalEl ? modalEl.querySelector('.ant-select-selection-selected-value') : null
-          const passwordEl = modalEl ? modalEl.querySelector('input[type="password"]') : null
+          const passwordEl = modalEl ? modalEl.querySelector('input[name="new_password"]') : null
           const extraParamsEl = modalEl ? modalEl.querySelector('input[placeholder*="zabbix"]') : null
           const playbook = selectEl ? selectEl.textContent : ''
-          const newPassword = passwordEl ? passwordEl.value : ''
+          const newPassword = (that.ansibleNewPassword || (passwordEl ? passwordEl.value : '')) || ''
           const extraParams = extraParamsEl ? extraParamsEl.value : ''
+          that.ansibleNewPassword = ''
           that.runAnsibleInit(playbook, newPassword, extraParams)
         },
       })

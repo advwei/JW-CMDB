@@ -38,6 +38,7 @@ JW-CMDB
 ├── cmdb-agent              # Agent服务器相关代码
 ├── cmdb-ansible-executor   # Ansible中间服务
 ├── tools                   # IP批量同步工具
+├── ansible_playbooks       # Ansible playbook
 └── ...
 ```
 

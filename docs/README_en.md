@@ -37,6 +37,7 @@ JW-CMDB
 ├── cmdb-agent # Agent Server Related Code
 ├── cmdb-ansible-executor # Ansible Intermediate Service
 ├── tools # Batch IP Synchronization Tool
+├── ansible_playbooks       # Ansible playbook
 └── ...
 ```
 

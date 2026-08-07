@@ -132,12 +132,11 @@ def run_playbook(hosts, playbook, new_password=None, extra_params=None):
     ANSIBLE_INVENTORY_DIR.mkdir(parents=True, exist_ok=True)
     inventory_path = ANSIBLE_INVENTORY_DIR / f"setup-{uuid4().hex}.ini"
 
+    inventory_extra = dict(extra_params or {})
     if new_password:
-        for h in hosts:
-            if not h.get("ansible_password"):
-                h["ansible_password"] = new_password
+        inventory_extra['new_password'] = new_password
 
-    inventory_content = build_inventory(hosts, extra_params)
+    inventory_content = build_inventory(hosts, inventory_extra)
     inventory_path.write_text(inventory_content, encoding="utf-8")
 
     cmd = [

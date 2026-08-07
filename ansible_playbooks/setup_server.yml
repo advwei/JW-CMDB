@@ -1,0 +1,27 @@
+---
+- name: 批量初始化Linux服务器配置（主机名与密码）
+  hosts: "{{ target_hosts | default('all') }}"
+  become: yes
+  gather_facts: yes
+  vars:
+    new_password_hashed: "{{ new_password | password_hash('sha512') }}"
+
+  tasks:
+    # 1. 修改主机名
+    - name: 更改系统主机名
+      hostname:
+        name: "{{ custom_hostname }}"
+
+    # 2. 修改 root 密码
+    - name: 更新 root 用户密码
+      user:
+        name: root
+        password: "{{ new_password_hashed }}"
+
+    # 3. 修改 user 密码
+    - name: 更新 user 用户密码
+      user:
+        name: user
+        password: "{{ new_password_hashed }}"
+        state: present  # 如果用户不存在则不操作，若需创建用户可改为 present
+

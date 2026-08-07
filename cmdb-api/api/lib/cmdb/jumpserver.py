@@ -7,6 +7,7 @@ from flask import abort
 from flask import current_app
 
 from api.lib.cmdb.ci import CIManager
+from api.lib.cmdb.cache import AttributeCache
 from api.lib.cmdb.const import RetKey
 from api.lib.cmdb.search import SearchError
 from api.lib.cmdb.search.ci import search as ci_search
@@ -124,6 +125,23 @@ class JumpServerAssetSync(object):
                     return value[0] if value else None
                 return value
 
+    def _get_password_attr_id(self, ci_dict):
+        candidates = self.field_map.get('secret', ['password', 'secret'])
+        for name in candidates:
+            if name in ci_dict:
+                attr = AttributeCache.get(name)
+                if attr and attr.is_password:
+                    return attr.id
+
+        return None
+
+    def _resolve_secret(self, ci_id, ci_dict):
+        attr_id = self._get_password_attr_id(ci_dict)
+        if attr_id is not None:
+            return CIManager.load_password(ci_id, attr_id)
+
+        return self._first_value(ci_dict, self.field_map.get('secret'))
+
     def _platform(self, ci_dict):
         raw = self._first_value(ci_dict, self.field_map.get('platform'))
         return self.platform_map.get(raw, raw or self.platform_map.get('default'))
@@ -145,12 +163,12 @@ class JumpServerAssetSync(object):
 
         return [node_id]
 
-    def build_payload(self, ci_dict):
+    def build_payload(self, ci_dict, ci_id=None):
         name = self._first_value(ci_dict, self.field_map.get('name'))
         address = self._first_value(ci_dict, self.field_map.get('address'))
         platform = self._platform(ci_dict)
         default_secret = self._db_default_account_secret or current_app.config.get('JMS_DEFAULT_ACCOUNT_SECRET')
-        secret = self._first_value(ci_dict, self.field_map.get('secret')) or default_secret
+        secret = self._resolve_secret(ci_id, ci_dict) or default_secret
 
         if not name:
             raise JumpServerConfigError('JumpServer asset name is missing')
@@ -184,7 +202,7 @@ class JumpServerAssetSync(object):
                                                  ret_key=RetKey.NAME,
                                                  need_children=False,
                                                  valid=True)
-        payload = self.build_payload(ci_dict)
+        payload = self.build_payload(ci_dict, ci_id)
         existed_asset_id = self._first_value(ci_dict, self.field_map.get('asset_id'))
 
         if existed_asset_id:

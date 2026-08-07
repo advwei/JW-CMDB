@@ -262,6 +262,7 @@ export default {
       isContinueCloseEdit: true,
       visible: false,
       playbookList: [],
+      ansibleNewPassword: '',
     }
   },
   watch: {
@@ -680,7 +681,12 @@ export default {
                 </a-select>
               </a-form-item>
               <a-form-item label="新密码（可选）">
-                <a-input-password ref="newPasswordInput" placeholder="留空则不修改密码" />
+                <a-input-password
+                  name="new_password"
+                  ref="newPasswordInput"
+                  placeholder="留空则不修改密码"
+                  onChange={(e) => { that.ansibleNewPassword = e.target.value }}
+                />
               </a-form-item>
               <a-form-item label="额外参数（可选）">
                 <a-input ref="extraParamsInput" placeholder="如 zabbix_server=1.2.3.4 port=10050" />
@@ -693,11 +699,12 @@ export default {
         onOk() {
           const modalEl = document.querySelector('.ant-modal-confirm-body')
           const playbookEl = modalEl ? modalEl.querySelector('.ant-select-selection-selected-value') : null
-          const passwordEl = modalEl ? modalEl.querySelector('input[type="password"]') : null
+          const passwordEl = modalEl ? modalEl.querySelector('input[name="new_password"]') : null
           const extraParamsEl = modalEl ? modalEl.querySelector('input[placeholder*="zabbix"]') : null
           const playbook = playbookEl ? playbookEl.textContent : ''
-          const newPassword = passwordEl ? passwordEl.value : ''
+          const newPassword = (that.ansibleNewPassword || (passwordEl ? passwordEl.value : '')) || ''
           const extraParams = extraParamsEl ? extraParamsEl.value : ''
+          that.ansibleNewPassword = ''
           that.batchAnsibleInitAsync(playbook, newPassword, extraParams)
         },
       })
