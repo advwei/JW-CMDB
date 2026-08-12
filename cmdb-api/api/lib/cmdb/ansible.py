@@ -60,8 +60,12 @@ class AnsibleClient(object):
             timeout=self.timeout,
         )
         if response.status_code != 200:
-            raise Exception('Ansible executor request failed: status={}, body={}'.format(
-                response.status_code, response.text))
+            try:
+                detail = response.json().get('error') or response.text
+            except Exception:
+                detail = response.text
+            raise Exception('Ansible executor request failed: status={}, detail={}'.format(
+                response.status_code, detail))
         return response.json()
 
     def list_playbooks(self):

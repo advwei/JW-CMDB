@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import subprocess
+from logging.handlers import WatchedFileHandler
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ _SAFE_NAME = re.compile(r"^[A-Za-z0-9_.-]+$")
 ANSIBLE_LOG_DIR = ANSIBLE_BASE_DIR / "logs"
 ANSIBLE_LOG_DIR.mkdir(parents=True, exist_ok=True)
 executor_logger = logging.getLogger("ansible-executor.executor")
-log_handler = logging.FileHandler(ANSIBLE_LOG_DIR / "executor_run.log", encoding="utf-8")
+log_handler = WatchedFileHandler(ANSIBLE_LOG_DIR / "executor_run.log", encoding="utf-8")
 log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 executor_logger.addHandler(log_handler)
 executor_logger.setLevel(logging.INFO)

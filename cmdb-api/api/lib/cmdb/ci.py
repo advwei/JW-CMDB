@@ -900,6 +900,9 @@ class CIManager(object):
                         if decrypted_password:
                             new_ci_dict[attr_name] = decrypted_password
 
+                for stale_field in ('jumpserver_id', 'jms_asset_id'):
+                    new_ci_dict.pop(stale_field, None)
+
                 if unique_key.name not in new_ci_dict or new_ci_dict.get(unique_key.name) is None:
                     results['failed'] += 1
                     results['errors'].append({'ci_id': ci_id, 'error': 'unique key value missing'})

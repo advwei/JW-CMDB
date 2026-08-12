@@ -43,6 +43,21 @@ class AnsibleSetupView(APIView):
             execution.update(status='Failed')
             db.session.commit()
             return abort(400, str(e))
+        except Exception as e:
+            current_app.logger.exception('Ansible setup-server failed: ci_id={}'.format(ci_id))
+            execution.update(status='Failed', success_count=0, failed_count=1)
+            AnsibleExecutionDetail.create(
+                execution_id=execution.id,
+                ci_id=ci_id,
+                ci_name='',
+                ip='',
+                status='Failed',
+                returncode=-1,
+                stdout='',
+                stderr=str(e),
+            )
+            db.session.commit()
+            return abort(500, str(e))
 
         exec_status = 'Success' if result.get('status') == 'Success' else 'Failed'
         execution.update(
@@ -104,7 +119,17 @@ class AnsibleBatchSetupView(APIView):
             )
         except Exception as e:
             current_app.logger.exception('Ansible batch setup failed')
-            execution.update(status='Failed')
+            execution.update(status='Failed', success_count=0, failed_count=len(ci_ids))
+            AnsibleExecutionDetail.create(
+                execution_id=execution.id,
+                ci_id=ci_ids[0] if ci_ids else 0,
+                ci_name='',
+                ip='',
+                status='Failed',
+                returncode=-1,
+                stdout='',
+                stderr=str(e),
+            )
             db.session.commit()
             return abort(500, str(e))
 
