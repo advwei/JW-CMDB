@@ -109,7 +109,7 @@ class AnsibleSync(object):
     def _is_initial_setup(playbook):
         if not playbook:
             return False
-        return playbook.replace('\\', '/').split('/')[-1] == 'setup_server.yml'
+        return playbook.replace('\\', '/').split('/')[-1] in ['setup_server.yml', 'setup_server_windows.yml']
 
     @staticmethod
     def _first_value(ci_dict, candidates):
@@ -125,7 +125,7 @@ class AnsibleSync(object):
 
     def _get_credentials(self, os_version):
         if is_windows_os(os_version):
-            default = {'ansible_port': 5985, 'ansible_user': 'Administrator', 'ansible_password': ''}
+            default = {'ansible_port': 5985, 'ansible_user': 'Administrator', 'ansible_password': 'eve.1234'}
         else:
             default = {'ansible_port': 22, 'ansible_user': 'root', 'ansible_password': 'eve.1234'}
 

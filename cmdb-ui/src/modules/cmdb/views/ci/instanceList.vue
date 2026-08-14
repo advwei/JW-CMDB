@@ -711,7 +711,7 @@ export default {
     },
     async batchAnsibleInitAsync(playbook, newPassword, extraParams) {
       this.loading = true
-      this.loadTip = 'Ansible 自动化执行中...'
+      this.loadTip = '正在提交 Ansible 自动化任务...'
       try {
         const res = await ansibleBatchSetupServer({
           ci_ids: this.selectedRowKeys,
@@ -720,20 +720,7 @@ export default {
           extra_params: extraParams,
         }, false)
         const total = res.total || 0
-        const failed = res.failed || 0
-        if (failed > 0) {
-          const errorMsg = (res.errors || []).map(e => `CI ${e.ci_id}: ${e.error}`).join('\n')
-          this.$notification.warning({
-            key: 'ansibleInit',
-            message: '警告',
-            description: `成功 ${total - failed}，失败 ${failed}\n${errorMsg}`,
-            duration: 0,
-            style: { whiteSpace: 'break-spaces', overflow: 'auto', maxHeight: this.windowHeight - 80 + 'px' },
-          })
-        }
-        if (!failed) {
-          this.$message.success(`Ansible 自动化执行完成，共 ${total} 个资产，结果请在执行日志页面查看`, 5)
-        }
+        this.$message.success(`已提交 ${total} 个资产的 Ansible 自动化任务，执行进度请在执行日志页面查看`, 5)
       } catch (error) {
         this.$message.error('Ansible 自动化执行失败: ' + (error.response?.data?.message || error.message || ''), 5)
       } finally {

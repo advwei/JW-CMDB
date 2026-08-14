@@ -45,7 +45,7 @@ JW-CMDB
 ### 2. 新增功能
 
 - **集成Jumpserve**：支持将记录的资产单独或批量推送到Jumpserve堡垒机，回收时自动删除Jumpserve对应资产。
-- **集成Ansible**：支持动态生成inventory，自定义选择执行playbook，前端自定义输入额外参数。
+- **集成Ansible**：支持动态生成inventory，自定义选择playbook后异步执行任务，前端自定义输入额外参数。
 - **新增IPAM Agent**：支持子网单次全量扫描（UI 右键触发），Agent增加HTTP服务与docker后端交互。
 - **资产模型**：增加vmserver模型记录资产，delserver模型用于记录回收资产，其他模型依旧支持自定义。
 - **Ansible执行日志**：前端可视化查看Ansible任务的成功/失败执行情况，详细查看具体主机信息及Ansible执行的标准及错误输出。

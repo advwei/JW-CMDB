@@ -647,11 +647,11 @@ export default {
       })
     },
     async runAnsibleInit(playbook, newPassword, extraParams) {
-      const loading = this.$message.loading('Ansible 自动化执行中...', 0)
+      const loading = this.$message.loading('正在提交 Ansible 自动化任务...', 0)
       try {
         await ansibleSetupServer(this.ciId, { playbook, new_password: newPassword, extra_params: extraParams }, true)
         loading()
-        this.$message.success('Ansible 自动化执行成功，结果请在执行日志页面查看', 5)
+        this.$message.success('已提交，执行进度请在执行日志页面查看', 5)
       } catch (e) {
         loading()
         this.$message.error('Ansible 自动化执行失败: ' + (e.response?.data?.message || e.message || ''), 5)

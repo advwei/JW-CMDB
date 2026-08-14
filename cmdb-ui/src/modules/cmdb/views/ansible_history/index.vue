@@ -131,6 +131,7 @@ export default {
       filterPlaybook: undefined,
       filterStatus: undefined,
       playbookOptions: [],
+      pollTimer: null,
       columns: [
         { title: 'ID', dataIndex: 'id', width: 80 },
         { title: '剧本', dataIndex: 'playbook', width: 250 },
@@ -159,8 +160,29 @@ export default {
   },
   mounted() {
     this.fetchData()
+    this.startPolling()
+  },
+  beforeDestroy() {
+    this.stopPolling()
   },
   methods: {
+    startPolling() {
+      this.stopPolling()
+      this.pollTimer = setInterval(this.checkRunningAndRefresh, 5000)
+    },
+    stopPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer)
+        this.pollTimer = null
+      }
+    },
+    checkRunningAndRefresh() {
+      if (this.tableData.some((r) => r.status === 'Running')) {
+        this.fetchData()
+      } else {
+        this.stopPolling()
+      }
+    },
     async fetchData() {
       this.tableLoading = true
       try {

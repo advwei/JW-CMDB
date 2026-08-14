@@ -1,13 +1,12 @@
-from flask import abort, session
-from flask import current_app
-from flask import request
+from flask import abort, session, request
 
-from api.lib.cmdb.ansible import AnsibleSync
 from api.lib.cmdb.ansible import AnsibleConfigError
+from api.lib.cmdb.const import CMDB_QUEUE
 from api.lib.cmdb.custom_dashboard import SystemConfigManager
 from api.extensions import db
 from api.models.ansible import AnsibleExecution, AnsibleExecutionDetail
 from api.resource import APIView
+from api.tasks.ansible import ansible_setup, ansible_batch_setup
 
 
 class AnsibleSetupView(APIView):
@@ -37,47 +36,12 @@ class AnsibleSetupView(APIView):
         )
         db.session.commit()
 
-        try:
-            result = AnsibleSync().setup_server(ci_id, playbook=playbook, new_password=new_password, extra_params=extra_params or None)
-        except AnsibleConfigError as e:
-            execution.update(status='Failed')
-            db.session.commit()
-            return abort(400, str(e))
-        except Exception as e:
-            current_app.logger.exception('Ansible setup-server failed: ci_id={}'.format(ci_id))
-            execution.update(status='Failed', success_count=0, failed_count=1)
-            AnsibleExecutionDetail.create(
-                execution_id=execution.id,
-                ci_id=ci_id,
-                ci_name='',
-                ip='',
-                status='Failed',
-                returncode=-1,
-                stdout='',
-                stderr=str(e),
-            )
-            db.session.commit()
-            return abort(500, str(e))
-
-        exec_status = 'Success' if result.get('status') == 'Success' else 'Failed'
-        execution.update(
-            status=exec_status,
-            success_count=1 if exec_status == 'Success' else 0,
-            failed_count=0 if exec_status == 'Success' else 1,
+        ansible_setup.apply_async(
+            args=(execution.id, ci_id, playbook or '', new_password or '', extra_params, uid),
+            queue=CMDB_QUEUE,
         )
-        AnsibleExecutionDetail.create(
-            execution_id=execution.id,
-            ci_id=ci_id,
-            ci_name=result.get('hostname', ''),
-            ip=result.get('ip', ''),
-            status=exec_status,
-            returncode=result.get('returncode'),
-            stdout=result.get('stdout', ''),
-            stderr=result.get('stderr', ''),
-        )
-        db.session.commit()
 
-        return self.jsonify(result)
+        return self.jsonify(execution_id=execution.id, status=execution.status)
 
 
 class AnsibleBatchSetupView(APIView):
@@ -113,67 +77,16 @@ class AnsibleBatchSetupView(APIView):
         )
         db.session.commit()
 
-        try:
-            batch_result = AnsibleSync().setup_servers_batch(
-                ci_ids, playbook=playbook, new_password=new_password, extra_params=extra_params or None
-            )
-        except Exception as e:
-            current_app.logger.exception('Ansible batch setup failed')
-            execution.update(status='Failed', success_count=0, failed_count=len(ci_ids))
-            AnsibleExecutionDetail.create(
-                execution_id=execution.id,
-                ci_id=ci_ids[0] if ci_ids else 0,
-                ci_name='',
-                ip='',
-                status='Failed',
-                returncode=-1,
-                stdout='',
-                stderr=str(e),
-            )
-            db.session.commit()
-            return abort(500, str(e))
-
-        exec_status = batch_result.get('status', 'Failed')
-        success_count = sum(1 for h in batch_result.get('hosts_result', []) if h.get('status') == 'Success')
-        failed_count = len(batch_result.get('errors', [])) + (len(batch_result.get('hosts_result', [])) - success_count)
-
-        execution.update(
-            status=exec_status,
-            success_count=success_count,
-            failed_count=failed_count,
+        ansible_batch_setup.apply_async(
+            args=(execution.id, ci_ids, playbook or '', new_password or '', extra_params, uid),
+            queue=CMDB_QUEUE,
         )
 
-        for h in batch_result.get('hosts_result', []):
-            AnsibleExecutionDetail.create(
-                execution_id=execution.id,
-                ci_id=h.get('ci_id', 0),
-                ci_name=h.get('hostname', ''),
-                ip=h.get('ip', ''),
-                status=h.get('status', exec_status),
-                returncode=batch_result.get('returncode'),
-                stdout=batch_result.get('stdout', ''),
-                stderr=batch_result.get('stderr', ''),
-            )
-
-        for err in batch_result.get('errors', []):
-            AnsibleExecutionDetail.create(
-                execution_id=execution.id,
-                ci_id=err.get('ci_id', 0),
-                ci_name='',
-                ip='',
-                status='Failed',
-                returncode=-1,
-                stdout='',
-                stderr=err.get('error', ''),
-            )
-
-        db.session.commit()
-
         return self.jsonify(
-            total=len(batch_result.get('hosts_result', [])) + len(batch_result.get('errors', [])),
-            failed=failed_count,
-            result=batch_result.get('hosts_result', []),
-            errors=batch_result.get('errors', []),
+            execution_id=execution.id,
+            status=execution.status,
+            total=len(ci_ids),
+            ci_count=len(ci_ids),
         )
 
 
