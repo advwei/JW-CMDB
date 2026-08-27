@@ -79,3 +79,9 @@ docker exec -it cmdb-api sh
 #更新sql命令
 mysql -u root -p cmdb < docs/ansible_tables.sql
 ```
+
+# 4、修复IP地址孤儿关系
+```bash
+docker exec -it cmdb-api sh
+flask cmdb-repair-ipam-relations
+```

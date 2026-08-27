@@ -600,3 +600,19 @@ def cmdb_patch(version):
             batch_ci_cache.apply_async(args=(ci_ids,))
     except Exception as e:
         print("cmdb patch failed: {}".format(e))
+
+
+@click.command()
+@with_appcontext
+def cmdb_repair_ipam_relations():
+    """Repair historical ipam_address CIs that exist but are not linked to their
+    subnet via relation. Run once after a data import / upgrade."""
+    from api.lib.cmdb.ipam.address import IpAddressManager
+
+    # SearchFromDB / CIRelationManager require a request context and a worker
+    # identity; push one so this CLI command can run outside an HTTP request.
+    current_app.test_request_context().push()
+    login_user(UserCache.get('worker'))
+
+    fixed = IpAddressManager.repair_missing_address_relations()
+    click.echo("IPAM address relations repaired: {}".format(fixed))

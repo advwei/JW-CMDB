@@ -420,10 +420,22 @@ export default {
       const subnetData = await getIPAMSubnetById(this.nodeData.key)
       this.subnetData = subnetData
 
+      // Normalize IPs so addresses stored in a non-canonical form (zero-padded,
+      // trailing /32, etc.) still merge with the subnet's host list.
+      const normalizeIp = (ip) => {
+        if (!ip) return ip
+        const head = String(ip).split('/')[0]
+        const parts = head.split('.')
+        if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) {
+          return parts.map((p) => String(Number(p))).join('.')
+        }
+        return ip
+      }
+
       const addressMap = {}
       if (res?.result?.length) {
         res.result.forEach((item) => {
-          addressMap[item.ip] = item
+          addressMap[normalizeIp(item.ip)] = item
         })
       }
 
@@ -431,23 +443,26 @@ export default {
       let currentSelectScope = ''
 
       hostsList.map((ip) => {
+        const normIp = normalizeIp(ip)
         let colData = {
-          ip,
+          ip: normIp,
           _ip_status: ADDRESS_STATUS.OFFLINE_UNASSIGNED
         }
-        if (addressMap[ip]) {
-          const data = addressMap[ip]
-          const assigned = data.assign_status === 0 || data.assign_status === 2
+        if (addressMap[normIp]) {
+          const data = addressMap[normIp]
+          const assignStatus = data.assign_status
+          const assigned = assignStatus === 0 || assignStatus === 2
+          const isUsed = data.is_used === true
 
-          if (data.is_used) {
+          if (isUsed) {
             colData._ip_status = assigned ? ADDRESS_STATUS.ONLINE_ASSIGNED : ADDRESS_STATUS.ONLINE_UNASSIGNED
           } else if (assigned) {
             colData._ip_status = ADDRESS_STATUS.OFFLINE_ASSIGNED
           }
 
           colData = {
-            ...colData,
-            ...data
+            ...data,
+            ...colData
           }
         }
 
@@ -457,7 +472,7 @@ export default {
           gateway: colData?.gateway ?? subnetData?.gateway ?? undefined
         }
 
-        const key = ip.split(/\.(?=[^.]*$)/)?.[0]
+        const key = normIp.split(/\.(?=[^.]*$)/)?.[0]
         if (ipList[key]) {
           ipList[key].push(itemData)
         } else {
