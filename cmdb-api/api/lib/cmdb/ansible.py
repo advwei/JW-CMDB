@@ -233,8 +233,9 @@ class AnsibleSync(object):
             new_password=new_password,
             extra_params=extra_params,
         )
+        status = (result.get('host_results') or {}).get(entry['ip']) or result.get('status')
 
-        if new_password and result.get('status') == 'Success':
+        if new_password and status == 'Success':
             self._save_ci_password(ci_id, entry['ci_dict'], new_password)
 
         return {
@@ -243,7 +244,7 @@ class AnsibleSync(object):
             'hostname': entry['custom_hostname'],
             'os_version': entry['os_version'],
             'playbook': playbook,
-            'status': result.get('status'),
+            'status': status,
             'returncode': result.get('returncode'),
             'stdout': result.get('stdout'),
             'stderr': result.get('stderr'),
@@ -289,17 +290,19 @@ class AnsibleSync(object):
         )
 
         hosts_result = []
+        host_results = result.get('host_results') or {}
         for h in hosts:
             entry = host_entries.get(h['ip'], {})
             ci_id = entry.get('ci_id')
-            if ci_id and new_password and result.get('status') == 'Success':
+            status = host_results.get(h['ip']) or result.get('status')
+            if ci_id and new_password and status == 'Success':
                 self._save_ci_password(ci_id, entry.get('ci_dict', {}), new_password)
             hosts_result.append({
                 'ci_id': ci_id,
                 'ip': h['ip'],
                 'hostname': h['custom_hostname'],
                 'os_version': h.get('os_version', ''),
-                'status': result.get('status'),
+                'status': status,
             })
 
         return {
